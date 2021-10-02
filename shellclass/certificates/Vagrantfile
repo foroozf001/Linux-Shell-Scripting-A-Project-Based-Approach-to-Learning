@@ -1,0 +1,15 @@
+$PROVISION=<<SCRIPT
+date
+SCRIPT
+
+Vagrant.configure("2") do |config|
+  config.vm.define 'centos' do |centos|
+    centos.vm.box="jasonc/centos7"
+    centos.vm.hostname="centos"
+    centos.vm.network "private_network", ip: "192.168.130.10"
+    centos.vm.provider :virtualbox do |vb|
+      vb.name="centos"
+    end
+    centos.vm.provision "shell", inline: $PROVISION
+  end
+end
