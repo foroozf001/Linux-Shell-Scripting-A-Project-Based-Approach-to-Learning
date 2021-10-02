@@ -1,43 +1,87 @@
 #!/bin/bash 
 
-#while getopts p:k:c: flag
-#do
-#    case "${flag}" in
-#        p) INPUT_PUBLIC_CERTIFICATE=${OPTARG};;
-#	k) INPUT_PRIVATE_KEY=${OPTARG};;
-#        c) INPUT_CSR=${OPTARG};;
-#    esac
-#done
+# This script determines certificate files are a match.
 
-read -s -p "Enter pass phrase for server.key: " PASSPHRASE
-if [[ -z "${PASSPHRASE}" ]]; then
-  echo 
-  echo "empty passphrase" 1>&2
+if [[ "${#}" -lt 1 ]];then
+  echo "Determine certificates are matching or not."
+  echo
+  echo "Usage:"
+  echo "  ${0} [OPTIONS]..."
+  echo
+  echo "Options:"
+  echo "  -h, --help"
+  echo "  -p, --public-key	public key"
+  echo "  -c, --csr		certificate signing request"
+  echo "  -k, --private-key	private key"
+  echo
   exit 1
 fi
 
-echo
+while [[ "${#}" -gt 0 ]];do
+  case "${1}" in
+    -h|--help)    
+      echo "Determine certificates are matching or not."
+      echo
+      echo "Usage:"
+      echo "  ${0} [OPTIONS]..."
+      echo
+      echo "Options:"
+      echo "  -h, --help"
+      echo "  -p, --public-key	public key"
+      echo "  -c, --csr		certificate signing request"
+      echo "  -k, --private-key	private key"
+      echo
+      exit 0
+      ;;
+    -p|--public-key)
+      shift
+      PUBLIC_KEY_FILE="${1}"
+      shift
+      ;;
+    -c|--csr)
+      shift
+      CSR_FILE="${1}"
+      shift
+      ;;
+    -k|--private-key)
+      shift
+      PRIVATE_KEY_FILE="${1}"
+      shift
+      ;;
+    *)
+      echo "Invalid argument: ${1}" 1>&2
+      echo
+      "${0}" -h
+      break
+      ;;
+  esac
+done
 
-RESULT=$(openssl pkey -in server.key -passin pass:"${PASSPHRASE}" -pubout -outform pem 2>&1)
+if [[ -f "${PRIVATE_KEY_FILE}" ]];then  
+  read -s -p "Enter pass phrase for ${PRIVATE_KEY_FILE}: " PASSPHRASE
+  if [[ -z "${PASSPHRASE}" ]]; then
+    echo 
+    echo "empty passphrase" 1>&2
+    exit 1
+  fi
+  echo  
+  openssl pkey -in "${PRIVATE_KEY_FILE}" -passin pass:"${PASSPHRASE}" -pubout -outform pem &>/dev/null 
+  if [[ "${?}" -eq 1 ]];then
+    echo "invalid passphrase" 1>&2
+    exit 1
+  fi
+  PRIVATE_SUM=$(openssl pkey -in "${PRIVATE_KEY_FILE}" -passin pass:"${PASSPHRASE}" -pubout -outform pem |& sha256sum)
+fi
 
-#if [[ ! -z $(openssl pkey -in server.key -passin pass:"${PASSPHRASE}" -pubout -outform pem 2>&1) ]];then
-#  echo "unable to load key" 1>&2
-#  exit 1
-#fi
+if [[ -f "${PUBLIC_KEY_FILE}" ]];then
+  PUBLIC_SUM=$(openssl x509 -in "${PUBLIC_KEY_FILE}" -pubkey -noout -outform pem |& sha256sum)
+fi 
 
-#PRIVATE_SUM=$(openssl pkey -in server.key -passin pass:"${PASSPHRASE}" -pubout -outform pem |& sha256sum)
-#PUBLIC_SUM=$(openssl x509 -in server.crt -pubkey -noout -outform pem |& sha256sum)
-#echo "${PRIVATE_SUM}"
-#echo "${?}"
-#
-##echo $PUBLIC_KEY_SUM
-#echo $PRIVATE_KEY_SUM
-#
-#if [[ "${PRIVATE_KEY_SUM}" = "${PUBLIC_KEY_SUM}" ]];
-#then
-#  echo "Match!"
-#else
-#  echo "Mismatch!"
-#  exit 1
-#fi
-#exit 0
+if [[ -f "${CSR_FILE}" ]];then
+  CSR_SUM=$(openssl req -in "${CSR_FILE}" -pubkey -noout -outform pem |& sha256sum)
+fi 
+
+for i in "${PRIVATE_SUM}" "${PUBLIC_SUM}" "${CSR_SUM}";do
+  if [[ -n "${i}" ]];then
+  fi
+done
