@@ -98,6 +98,7 @@ if [[ -f "${CSR_FILE}" ]];then
   SUMS+=("${CSR_SUM}")
 fi
 
+# Loop over checksums and exit if elements don't match.
 LENGTH="${#SUMS[@]}"
 for (( i=1; i<"${LENGTH}"; i++ ));do
   if [[ "${SUMS[0]}" != "${SUMS[$i]}" ]];then
