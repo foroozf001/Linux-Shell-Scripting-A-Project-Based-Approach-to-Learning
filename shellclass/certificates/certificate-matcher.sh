@@ -1,10 +1,7 @@
 #!/bin/bash 
 
-# This script allows users to determine whether certificate files are matching or not by means of comparison of the public key checksums.
-
-# Make sure the user supplies at least one argument. Display help otherwise.
-if [[ "${#}" -lt 1 ]];then
-  echo "This script allows users to determine whether certificate files are matching or not by means of comparison of the public key checksums."
+usage() {
+  echo "This script allows users to determine whether certificate files are matching."
   echo
   echo "Usage:"
   echo "  ${0} [OPTIONS]..."
@@ -15,25 +12,26 @@ if [[ "${#}" -lt 1 ]];then
   echo "  -c, --csr		certificate signing request"
   echo "  -k, --private-key	private key"
   echo
-  exit 1
+}
+
+# Ensure the user executes this script with elevated user permissions.
+if [[ $(id -u) -ne 0 ]];then 
+	echo "Please run with sudo or as root." 1>&2
+	exit 1
+fi
+
+# Ensure the user supplies at least one argument.
+if [[ "${#}" -lt 1 ]];then
+	usage 1>&2
+	exit 1
 fi
 
 # Loop over all positional parameters.
 while [[ "${#}" -gt 0 ]];do
   case "${1}" in
-    # Display help.
+    # Display usage.
     -h|--help)    
-      echo "This script allows users to determine whether certificate files are matching or not by means of comparison of the public key checksums."
-      echo
-      echo "Usage:"
-      echo "  ${0} [OPTIONS]..."
-      echo
-      echo "Options:"
-      echo "  -h, --help"
-      echo "  -p, --public-key	public key"
-      echo "  -c, --csr		certificate signing request"
-      echo "  -k, --private-key	private key"
-      echo
+			usage
       exit 0
       ;;
     # Input parameter public key.
@@ -54,17 +52,18 @@ while [[ "${#}" -gt 0 ]];do
       PRIVATE_KEY_FILE="${1}"
       shift
       ;;
-    # For invalid input parameters, display help.
+    # Invalid input parameter. 
     *)
-      echo "Invalid argument: ${1}" 1>&2
+      echo "Invalid argument: ${1}." 1>&2
       echo
       "${0}" -h
+			exit 1
       break
       ;;
   esac
 done
 
-# Variable containing certificate checksums.
+# Array containing certificate checksums.
 SUMS=()
 if [[ -f "${PRIVATE_KEY_FILE}" ]];then  
   # User input passphrase.
@@ -75,8 +74,8 @@ if [[ -f "${PRIVATE_KEY_FILE}" ]];then
     exit 1
   fi
   echo  
-  # Attempt to process private key, using passphrase.
-  openssl pkey -in "${PRIVATE_KEY_FILE}" -passin pass:"${PASSPHRASE}" -pubout -outform pem &>/dev/null 
+  # Attempt to process private key, using passphrase, to confirm validity.
+  openssl pkey -in "${PRIVATE_KEY_FILE}" -passin pass:"${PASSPHRASE}" -pubout -outform pem &> /dev/null 
   if [[ "${?}" -eq 1 ]];then
     echo "invalid passphrase" 1>&2
     exit 1
@@ -87,12 +86,24 @@ if [[ -f "${PRIVATE_KEY_FILE}" ]];then
 fi
 
 if [[ -f "${PUBLIC_KEY_FILE}" ]];then
+	# Attempt to process public key to confirm validity.
+	openssl x509 -in "${PUBLIC_KEY_FILE}" -pubkey -noout -outform pem &> /dev/null
+  if [[ "${?}" -eq 1 ]];then
+    echo "invalid public key" 1>&2
+    exit 1
+  fi
   # Get public key checksum and append to array.
   PUBLIC_SUM=$(openssl x509 -in "${PUBLIC_KEY_FILE}" -pubkey -noout -outform pem | sha256sum)
   SUMS+=("${PUBLIC_SUM}")
 fi 
 
 if [[ -f "${CSR_FILE}" ]];then
+	# Attempt to process CSR to confirm validity.
+	openssl req -in "${CSR_FILE}" -pubkey -noout -outform pem &> /dev/null
+  if [[ "${?}" -eq 1 ]];then
+    echo "invalid csr" 1>&2
+    exit 1
+  fi
   # Get csr checksum and append to array.
   CSR_SUM=$(openssl req -in "${CSR_FILE}" -pubkey -noout -outform pem | sha256sum)
   SUMS+=("${CSR_SUM}")
@@ -106,5 +117,7 @@ for (( i=1; i<"${LENGTH}"; i++ ));do
     exit 1
   fi
 done
+
 echo "match"
+
 exit 0

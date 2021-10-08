@@ -3,13 +3,13 @@ date
 SCRIPT
 
 Vagrant.configure("2") do |config|
-  config.vm.define 'centos' do |centos|
-    centos.vm.box="jasonc/centos7"
-    centos.vm.hostname="centos"
-    centos.vm.network "private_network", ip: "192.168.130.10"
-    centos.vm.provider :virtualbox do |vb|
-      vb.name="centos"
+  config.vm.define 'centos1' do |centos1|
+    centos1.vm.box="jasonc/centos7"
+    centos1.vm.hostname="centos1"
+    centos1.vm.network "private_network", ip: "192.168.130.10"
+    centos1.vm.provider :virtualbox do |vb|
+      vb.name="centos1"
     end
-    centos.vm.provision "shell", inline: $PROVISION
+    centos1.vm.provision "shell", inline: $PROVISION
   end
 end
