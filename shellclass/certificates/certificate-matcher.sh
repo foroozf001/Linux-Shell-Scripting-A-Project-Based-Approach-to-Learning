@@ -30,7 +30,7 @@ fi
 while [[ "${#}" -gt 0 ]];do
   case "${1}" in
     # Display usage.
-    -h|--help)    
+    -h|--help)
 			usage
       exit 0
       ;;
