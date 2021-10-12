@@ -20,7 +20,7 @@ if [[ $(id -u) -ne 0 ]];then
 	exit 1
 fi
 
-# Ensure the user supplies at least one argument.
+# Ensure the user supplies at least four arguments.
 if [[ "${#}" -lt 1 ]];then
 	usage 1>&2
 	exit 1
@@ -31,7 +31,7 @@ while [[ "${#}" -gt 0 ]];do
   case "${1}" in
     # Display usage.
     -h|--help)
-			usage
+      usage
       exit 0
       ;;
     # Input parameter public key.
@@ -57,7 +57,7 @@ while [[ "${#}" -gt 0 ]];do
       echo "Invalid argument: ${1}." 1>&2
       echo
       "${0}" -h
-			exit 1
+      exit 1
       break
       ;;
   esac
@@ -109,11 +109,17 @@ if [[ -f "${CSR_FILE}" ]];then
   SUMS+=("${CSR_SUM}")
 fi
 
-# Loop over checksums and exit if elements don't match.
+# Ensure there's at least two checksums present.
 LENGTH="${#SUMS[@]}"
+if [[ $LENGTH -lt 2 ]];then
+  echo "invalid input arguments" 1>&2
+  exit 1
+fi
+
+# Loop over checksums and exit if elements don't match.
 for (( i=1; i<"${LENGTH}"; i++ ));do
   if [[ "${SUMS[0]}" != "${SUMS[$i]}" ]];then
-    echo "no match" 
+    echo "no match"
     exit 1
   fi
 done
